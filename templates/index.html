@@ -46,7 +46,6 @@
             <h2 id="runningFlights">0</h2>
         </div>
 
-        <!-- CHANGE: Added terminated flight statistics -->
         <div class="stat-card">
             <p>Terminated</p>
             <h2 id="terminatedFlights">0</h2>
@@ -139,7 +138,6 @@
             </div>
 
             <div class="operation-buttons">
-                <!-- CHANGE: Added scheduler control -->
                 <button id="scheduleButton" type="button" class="primary-button">
                     ▶ Run Scheduler
                 </button>
@@ -150,7 +148,6 @@
             </div>
         </div>
 
-        <!-- CHANGE: Displays scheduler and safety results -->
         <div id="schedulerMessage" class="message" aria-live="polite"></div>
 
         <div class="table-wrapper">
@@ -172,6 +169,53 @@
                     </tr>
                 </tbody>
             </table>
+        </div>
+    </section>
+
+    <!-- NEW: Resource Request Panel -->
+    <section class="panel">
+        <div class="section-heading">
+            <div>
+                <h2>Resource Request Center</h2>
+                <p>Request resources for a flight and check allocation safety</p>
+            </div>
+        </div>
+
+        <form id="resourceRequestForm">
+            <div class="form-grid">
+                <div class="form-group">
+                    <label for="requestFlightId">Select Flight</label>
+                    <select id="requestFlightId" required>
+                        <option value="">Select a flight</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="requestRunways">Runways Requested</label>
+                    <input type="number" id="requestRunways" min="0" max="2" value="1" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="requestGates">Gates Requested</label>
+                    <input type="number" id="requestGates" min="0" max="3" value="1" required>
+                </div>
+            </div>
+
+            <div class="operation-buttons">
+                <button type="submit" class="primary-button">
+                    Request Resources
+                </button>
+
+                <button type="button" id="deadlockCheckButton" class="secondary-button">
+                    Check Deadlock
+                </button>
+            </div>
+        </form>
+
+        <div id="resourceRequestMessage" class="message" aria-live="polite"></div>
+
+        <div id="deadlockResults" aria-live="polite">
+            <p>Deadlock analysis results will appear here.</p>
         </div>
     </section>
 
