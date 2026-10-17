@@ -1,5 +1,4 @@
 <!DOCTYPE html>
-
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -15,255 +14,292 @@
             <p>Runway Allocation & Deadlock Avoidance System</p>
         </div>
 
-```
-    <div class="system-status">
-        <span class="status-dot"></span>
-        System Online
-    </div>
-</header>
-
-<main class="container">
-
-    <!-- Statistics -->
-    <section class="stats-grid">
-        <div class="stat-card">
-            <p>Total Flights</p>
-            <h2 id="totalFlights">0</h2>
+        <div class="system-status">
+            <span class="status-dot"></span>
+            System Online
         </div>
+    </header>
 
-        <div class="stat-card">
-            <p>Ready</p>
-            <h2 id="readyFlights">0</h2>
-        </div>
+    <main class="container">
 
-        <div class="stat-card">
-            <p>Waiting</p>
-            <h2 id="waitingFlights">0</h2>
-        </div>
-
-        <div class="stat-card">
-            <p>Running</p>
-            <h2 id="runningFlights">0</h2>
-        </div>
-
-        <div class="stat-card">
-            <p>Terminated</p>
-            <h2 id="terminatedFlights">0</h2>
-        </div>
-    </section>
-
-    <!-- Airport Resources -->
-    <section class="panel">
-        <div class="section-heading">
-            <div>
-                <h2>Airport Resources</h2>
-                <p>Current runway and gate availability</p>
+        <!-- Flight Statistics -->
+        <section class="stats-grid">
+            <div class="stat-card">
+                <p>Total Flights</p>
+                <h2 id="totalFlights">0</h2>
             </div>
-        </div>
 
-        <div class="resource-grid">
-            <div class="resource-card">
-                <div class="resource-icon">🛫</div>
+            <div class="stat-card">
+                <p>Ready</p>
+                <h2 id="readyFlights">0</h2>
+            </div>
+
+            <div class="stat-card">
+                <p>Waiting</p>
+                <h2 id="waitingFlights">0</h2>
+            </div>
+
+            <div class="stat-card">
+                <p>Running</p>
+                <h2 id="runningFlights">0</h2>
+            </div>
+
+            <div class="stat-card">
+                <p>Terminated</p>
+                <h2 id="terminatedFlights">0</h2>
+            </div>
+        </section>
+
+        <!-- NEW: Resource Utilization and Request Statistics -->
+        <section class="stats-grid">
+            <div class="stat-card">
+                <p>Runway Utilization</p>
+                <h2 id="runwayUtilization">0.0%</h2>
+            </div>
+
+            <div class="stat-card">
+                <p>Gate Utilization</p>
+                <h2 id="gateUtilization">0.0%</h2>
+            </div>
+
+            <div class="stat-card">
+                <p>Requests Granted</p>
+                <h2 id="grantedRequests">0</h2>
+            </div>
+
+            <div class="stat-card">
+                <p>Requests Rejected</p>
+                <h2 id="rejectedRequests">0</h2>
+            </div>
+
+            <div class="stat-card">
+                <p>Pending Requests</p>
+                <h2 id="pendingRequests">0</h2>
+            </div>
+        </section>
+
+        <!-- Airport Resources -->
+        <section class="panel">
+            <div class="section-heading">
                 <div>
-                    <h3>Runways</h3>
-                    <p><span id="availableRunways">0</span> available</p>
-                    <div class="progress-track">
-                        <div id="runwayProgress" class="progress-fill"></div>
-                    </div>
-                    <small>Total: <span id="totalRunways">0</span></small>
+                    <h2>Airport Resources</h2>
+                    <p>Current runway and gate availability</p>
                 </div>
             </div>
 
-            <div class="resource-card">
-                <div class="resource-icon">🅿️</div>
+            <div class="resource-grid">
+                <div class="resource-card">
+                    <div class="resource-icon">🛫</div>
+                    <div>
+                        <h3>Runways</h3>
+                        <p><span id="availableRunways">0</span> available</p>
+                        <div class="progress-track">
+                            <div id="runwayProgress" class="progress-fill"></div>
+                        </div>
+                        <small>Total: <span id="totalRunways">0</span></small>
+                    </div>
+                </div>
+
+                <div class="resource-card">
+                    <div class="resource-icon">🅿️</div>
+                    <div>
+                        <h3>Gates</h3>
+                        <p><span id="availableGates">0</span> available</p>
+                        <div class="progress-track">
+                            <div id="gateProgress" class="progress-fill"></div>
+                        </div>
+                        <small>Total: <span id="totalGates">0</span></small>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Add Flight -->
+        <section class="panel">
+            <div class="section-heading">
                 <div>
-                    <h3>Gates</h3>
-                    <p><span id="availableGates">0</span> available</p>
-                    <div class="progress-track">
-                        <div id="gateProgress" class="progress-fill"></div>
+                    <h2>Add Flight</h2>
+                    <p>Register a flight and its maximum resource requirements</p>
+                </div>
+            </div>
+
+            <form id="flightForm">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="flightId">Flight ID</label>
+                        <input type="text" id="flightId" placeholder="e.g. F104" required>
                     </div>
-                    <small>Total: <span id="totalGates">0</span></small>
-                </div>
-            </div>
-        </div>
-    </section>
 
-    <!-- Add Flight -->
-    <section class="panel">
-        <div class="section-heading">
-            <div>
-                <h2>Add Flight</h2>
-                <p>Register a flight and its maximum resource requirements</p>
-            </div>
-        </div>
+                    <div class="form-group">
+                        <label for="priority">Priority</label>
+                        <select id="priority">
+                            <option value="1">1 - Highest</option>
+                            <option value="2" selected>2 - Medium</option>
+                            <option value="3">3 - Lowest</option>
+                        </select>
+                    </div>
 
-        <form id="flightForm">
-            <div class="form-grid">
-                <div class="form-group">
-                    <label for="flightId">Flight ID</label>
-                    <input type="text" id="flightId" placeholder="e.g. F104" required>
-                </div>
+                    <div class="form-group">
+                        <label for="maxRunways">Maximum Runways</label>
+                        <input type="number" id="maxRunways" min="0" max="2" value="1" required>
+                    </div>
 
-                <div class="form-group">
-                    <label for="priority">Priority</label>
-                    <select id="priority">
-                        <option value="1">1 - Highest</option>
-                        <option value="2" selected>2 - Medium</option>
-                        <option value="3">3 - Lowest</option>
-                    </select>
+                    <div class="form-group">
+                        <label for="maxGates">Maximum Gates</label>
+                        <input type="number" id="maxGates" min="0" max="3" value="1" required>
+                    </div>
                 </div>
 
-                <div class="form-group">
-                    <label for="maxRunways">Maximum Runways</label>
-                    <input type="number" id="maxRunways" min="0" max="2" value="1" required>
+                <button type="submit" class="primary-button">+ Add Flight</button>
+                <p id="formMessage" class="message" aria-live="polite"></p>
+            </form>
+        </section>
+
+        <!-- Flight Operations -->
+        <section class="panel">
+            <div class="section-heading">
+                <div>
+                    <h2>Flight Operations</h2>
+                    <p>Monitor process states and resource requirements</p>
                 </div>
 
-                <div class="form-group">
-                    <label for="maxGates">Maximum Gates</label>
-                    <input type="number" id="maxGates" min="0" max="3" value="1" required>
-                </div>
-            </div>
+                <div class="operation-buttons">
+                    <button id="scheduleButton" type="button" class="primary-button">
+                        ▶ Run Scheduler
+                    </button>
 
-            <button type="submit" class="primary-button">+ Add Flight</button>
-            <p id="formMessage" class="message" aria-live="polite"></p>
-        </form>
-    </section>
-
-    <!-- Flight Operations -->
-    <section class="panel">
-        <div class="section-heading">
-            <div>
-                <h2>Flight Operations</h2>
-                <p>Monitor process states and resource requirements</p>
-            </div>
-
-            <div class="operation-buttons">
-                <button id="scheduleButton" type="button" class="primary-button">
-                    ▶ Run Scheduler
-                </button>
-
-                <button id="refreshButton" type="button" class="secondary-button">
-                    ↻ Refresh
-                </button>
-            </div>
-        </div>
-
-        <div id="schedulerMessage" class="message" aria-live="polite"></div>
-
-        <div class="table-wrapper">
-            <table>
-                <thead>
-                    <tr>
-                        <th>Flight ID</th>
-                        <th>Priority</th>
-                        <th>State</th>
-                        <th>Allocated (R/G)</th>
-                        <th>Maximum (R/G)</th>
-                        <th>Action</th>
-                    </tr>
-                </thead>
-
-                <tbody id="flightTableBody">
-                    <tr>
-                        <td colspan="6" class="empty-state">Loading flights...</td>
-                    </tr>
-                </tbody>
-            </table>
-        </div>
-    </section>
-
-    <!-- NEW: Resource Request Panel -->
-    <section class="panel">
-        <div class="section-heading">
-            <div>
-                <h2>Resource Request Center</h2>
-                <p>Request resources for a flight and check allocation safety</p>
-            </div>
-        </div>
-
-        <form id="resourceRequestForm">
-            <div class="form-grid">
-                <div class="form-group">
-                    <label for="requestFlightId">Select Flight</label>
-                    <select id="requestFlightId" required>
-                        <option value="">Select a flight</option>
-                    </select>
-                </div>
-
-                <div class="form-group">
-                    <label for="requestRunways">Runways Requested</label>
-                    <input type="number" id="requestRunways" min="0" max="2" value="1" required>
-                </div>
-
-                <div class="form-group">
-                    <label for="requestGates">Gates Requested</label>
-                    <input type="number" id="requestGates" min="0" max="3" value="1" required>
+                    <button id="refreshButton" type="button" class="secondary-button">
+                        ↻ Refresh
+                    </button>
                 </div>
             </div>
 
-            <div class="operation-buttons">
-                <button type="submit" class="primary-button">
-                    Request Resources
-                </button>
+            <div id="schedulerMessage" class="message" aria-live="polite"></div>
 
-                <button type="button" id="deadlockCheckButton" class="secondary-button">
-                    Check Deadlock
-                </button>
+            <div class="table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Flight ID</th>
+                            <th>Priority</th>
+                            <th>State</th>
+                            <th>Allocated (R/G)</th>
+                            <th>Maximum (R/G)</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+
+                    <tbody id="flightTableBody">
+                        <tr>
+                            <td colspan="6" class="empty-state">Loading flights...</td>
+                        </tr>
+                    </tbody>
+                </table>
             </div>
-        </form>
+        </section>
 
-        <div id="resourceRequestMessage" class="message" aria-live="polite"></div>
-
-        <div id="deadlockResults" aria-live="polite">
-            <p>Deadlock analysis results will appear here.</p>
-        </div>
-    </section>
-
-    <!-- OS Information -->
-    <section class="panel">
-        <div class="section-heading">
-            <div>
-                <h2>OS Control Center</h2>
-                <p>Operating system concepts demonstrated by this project</p>
-            </div>
-        </div>
-
-        <div class="concept-grid">
-            <div class="concept-card">
-                <span>01</span>
-                <h3>Priority Scheduling</h3>
-                <p>Processes eligible flights in priority order. Priority 1 is the highest.</p>
-            </div>
-
-            <div class="concept-card">
-                <span>02</span>
-                <h3>Banker's Algorithm</h3>
-                <p>Checks whether a proposed allocation leaves the system in a safe state.</p>
+        <!-- Resource Request Panel -->
+        <section class="panel">
+            <div class="section-heading">
+                <div>
+                    <h2>Resource Request Center</h2>
+                    <p>Request resources for a flight and check allocation safety</p>
+                </div>
             </div>
 
-            <div class="concept-card">
-                <span>03</span>
-                <h3>Synchronization</h3>
-                <p>Uses a mutex lock to protect shared flight and resource data.</p>
+            <form id="resourceRequestForm">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="requestFlightId">Select Flight</label>
+                        <select id="requestFlightId" required>
+                            <option value="">Select a flight</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="requestRunways">Runways Requested</label>
+                        <input type="number" id="requestRunways" min="0" max="2" value="1" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="requestGates">Gates Requested</label>
+                        <input type="number" id="requestGates" min="0" max="3" value="1" required>
+                    </div>
+                </div>
+
+                <div class="operation-buttons">
+                    <button type="submit" class="primary-button">
+                        Request Resources
+                    </button>
+
+                    <button type="button" id="deadlockCheckButton" class="secondary-button">
+                        Check Deadlock
+                    </button>
+                </div>
+            </form>
+
+            <div id="resourceRequestMessage" class="message" aria-live="polite"></div>
+
+            <div id="deadlockResults" aria-live="polite">
+                <p>Deadlock analysis results will appear here.</p>
+            </div>
+        </section>
+
+        <section class="panel">
+            <div class="section-heading">
+                <div>
+                    <h2>Execution Activity Log</h2>
+                    <p>Most recent simulator decisions and resource events</p>
+                </div>
+            </div>
+            <ul id="activityLog" class="activity-log" aria-live="polite">
+                <li>Loading activity…</li>
+            </ul>
+        </section>
+
+        <!-- OS Information -->
+        <section class="panel">
+            <div class="section-heading">
+                <div>
+                    <h2>OS Control Center</h2>
+                    <p>Operating system concepts demonstrated by this project</p>
+                </div>
             </div>
 
-            <div class="concept-card">
-                <span>04</span>
-                <h3>Process Management</h3>
-                <p>Tracks flights through Ready, Running, Waiting and Terminated states.</p>
+            <div class="concept-grid">
+                <div class="concept-card">
+                    <span>01</span>
+                    <h3>Priority Scheduling</h3>
+                    <p>Processes eligible flights in priority order. Priority 1 is the highest.</p>
+                </div>
+
+                <div class="concept-card">
+                    <span>02</span>
+                    <h3>Banker's Algorithm</h3>
+                    <p>Checks whether a proposed allocation leaves the system in a safe state.</p>
+                </div>
+
+                <div class="concept-card">
+                    <span>03</span>
+                    <h3>Synchronization</h3>
+                    <p>Uses a mutex lock to protect shared flight and resource data.</p>
+                </div>
+
+                <div class="concept-card">
+                    <span>04</span>
+                    <h3>Process Management</h3>
+                    <p>Tracks flights through Ready, Running, Waiting and Terminated states.</p>
+                </div>
             </div>
-        </div>
-    </section>
+        </section>
 
-</main>
+    </main>
 
-<footer>
-    <p>Airport Runway Resource Allocation System · Operating Systems Mini-Project</p>
-    <p>Simulation only — not intended for real-world airport control.</p>
-</footer>
+    <footer>
+        <p>Airport Runway Resource Allocation System · Operating Systems Mini-Project</p>
+        <p>Simulation only — not intended for real-world airport control.</p>
+    </footer>
 
-<script src="{{ url_for('static', filename='js/script.js') }}"></script>
-```
-
+    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
 </body>
 </html>

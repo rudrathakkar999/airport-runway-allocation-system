@@ -366,6 +366,19 @@ footer {
     font-size: 11px;
 }
 
+.activity-log {
+    max-height: 220px;
+    overflow-y: auto;
+    margin: 0;
+    padding-left: 1.25rem;
+}
+
+.activity-log li {
+    margin: 0.45rem 0;
+    color: var(--text-secondary, #52606d);
+    font-size: 0.92rem;
+}
+
 footer p + p {
     margin-top: 4px;
 }

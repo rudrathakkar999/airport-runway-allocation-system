@@ -1,10 +1,12 @@
 // API endpoints
 const API = {
-flights: "/api/flights",
-resources: "/api/resources",
-status: "/api/status",
-schedule: "/api/schedule",
-deadlockCheck: "/api/deadlock-check" // NEW
+    flights: "/api/flights",
+    resources: "/api/resources",
+    status: "/api/status",
+    statistics: "/api/statistics", // NEW: Detailed statistics
+    schedule: "/api/schedule",
+    deadlockCheck: "/api/deadlock-check",
+    activityLog: "/api/activity-log"
 };
 
 // Existing elements
@@ -15,462 +17,468 @@ const flightTableBody = document.getElementById("flightTableBody");
 const refreshButton = document.getElementById("refreshButton");
 const scheduleButton = document.getElementById("scheduleButton");
 
-// NEW: Resource request elements
+// Resource request elements
 const resourceRequestForm = document.getElementById("resourceRequestForm");
 const requestFlightId = document.getElementById("requestFlightId");
 const resourceRequestMessage = document.getElementById("resourceRequestMessage");
 const deadlockCheckButton = document.getElementById("deadlockCheckButton");
 const deadlockResults = document.getElementById("deadlockResults");
+const activityLog = document.getElementById("activityLog");
 
 // Fetch JSON from the Flask backend
 async function fetchJSON(url, options = {}) {
-const response = await fetch(url, options);
-const data = await response.json();
+    const response = await fetch(url, options);
+    const data = await response.json().catch(() => ({}));
 
+    // Handle both "error" and "message" responses.
+    if (!response.ok) {
+        throw new Error(data.error || data.message || "Request failed.");
+    }
 
-// CHANGE: Handle both "error" and "message" responses.
-if (!response.ok) {
-    throw new Error(data.error || data.message || "Request failed.");
+    return data;
 }
 
-return data;
-
-
+async function loadActivityLog() {
+    if (!activityLog) return;
+    const data = await fetchJSON(API.activityLog);
+    activityLog.innerHTML = "";
+    const events = Array.isArray(data.events) ? data.events : [];
+    if (!events.length) {
+        activityLog.textContent = "No activity has been recorded yet.";
+        return;
+    }
+    events.forEach(event => {
+        const item = document.createElement("li");
+        item.textContent = `[${event.timestamp}] ${event.message}`;
+        activityLog.appendChild(item);
+    });
 }
 
 // Load flight statistics
 async function loadStatus() {
-const data = await fetchJSON(API.status);
+    const data = await fetchJSON(API.status);
 
+    document.getElementById("totalFlights").textContent = data.total ?? 0;
+    document.getElementById("readyFlights").textContent = data.ready ?? 0;
+    document.getElementById("waitingFlights").textContent = data.waiting ?? 0;
+    document.getElementById("runningFlights").textContent = data.running ?? 0;
+    document.getElementById("terminatedFlights").textContent = data.terminated ?? 0;
+}
 
-document.getElementById("totalFlights").textContent = data.total ?? 0;
-document.getElementById("readyFlights").textContent = data.ready ?? 0;
-document.getElementById("waitingFlights").textContent = data.waiting ?? 0;
-document.getElementById("runningFlights").textContent = data.running ?? 0;
-document.getElementById("terminatedFlights").textContent = data.terminated ?? 0;
+// NEW: Load detailed resource and request statistics
+async function loadStatistics() {
+    const data = await fetchJSON(API.statistics);
 
+    document.getElementById("runwayUtilization").textContent =
+        `${Number(data.runway_utilization ?? 0).toFixed(1)}%`;
 
+    document.getElementById("gateUtilization").textContent =
+        `${Number(data.gate_utilization ?? 0).toFixed(1)}%`;
+
+    document.getElementById("grantedRequests").textContent =
+        data.resource_requests_granted ?? 0;
+
+    document.getElementById("rejectedRequests").textContent =
+        data.resource_requests_rejected ?? 0;
+
+    document.getElementById("pendingRequests").textContent =
+        data.pending_requests ?? 0;
 }
 
 // Load runway and gate availability
 async function loadResources() {
-const data = await fetchJSON(API.resources);
+    const data = await fetchJSON(API.resources);
 
+    const runways = data.runways;
+    const gates = data.gates;
 
-const runways = data.runways;
-const gates = data.gates;
+    document.getElementById("availableRunways").textContent = runways.available;
+    document.getElementById("totalRunways").textContent = runways.total;
 
-document.getElementById("availableRunways").textContent = runways.available;
-document.getElementById("totalRunways").textContent = runways.total;
+    document.getElementById("availableGates").textContent = gates.available;
+    document.getElementById("totalGates").textContent = gates.total;
 
-document.getElementById("availableGates").textContent = gates.available;
-document.getElementById("totalGates").textContent = gates.total;
+    // Update resource progress bars
+    document.getElementById("runwayProgress").style.width =
+        `${runways.total ? (runways.available / runways.total) * 100 : 0}%`;
 
-// Update resource progress bars
-document.getElementById("runwayProgress").style.width =
-    `${runways.total ? (runways.available / runways.total) * 100 : 0}%`;
-
-document.getElementById("gateProgress").style.width =
-    `${gates.total ? (gates.available / gates.total) * 100 : 0}%`;
-
-
+    document.getElementById("gateProgress").style.width =
+        `${gates.total ? (gates.available / gates.total) * 100 : 0}%`;
 }
 
-// NEW: Update the flight selection dropdown
+// Update the flight selection dropdown
 async function loadRequestFlightOptions() {
-if (!requestFlightId) return;
+    if (!requestFlightId) return;
 
+    const flights = await fetchJSON(API.flights);
+    const currentSelection = requestFlightId.value;
 
-const flights = await fetchJSON(API.flights);
-const currentSelection = requestFlightId.value;
+    requestFlightId.innerHTML = '<option value="">Select a flight</option>';
 
-requestFlightId.innerHTML = '<option value="">Select a flight</option>';
+    flights
+        .filter(flight => flight.state !== "Terminated")
+        .forEach(flight => {
+            const option = document.createElement("option");
 
-flights
-    .filter(flight => flight.state !== "Terminated")
-    .forEach(flight => {
-        const option = document.createElement("option");
+            option.value = flight.id;
+            option.textContent =
+                `${flight.id} — ${flight.state} (Priority ${flight.priority})`;
 
-        option.value = flight.id;
-        option.textContent =
-            `${flight.id} — ${flight.state} (Priority ${flight.priority})`;
+            requestFlightId.appendChild(option);
+        });
 
-        requestFlightId.appendChild(option);
-    });
-
-// Preserve the selection when it is still valid.
-if ([...requestFlightId.options].some(option => option.value === currentSelection)) {
-    requestFlightId.value = currentSelection;
-}
-
-
+    // Preserve the selection when it is still valid.
+    if ([...requestFlightId.options].some(option => option.value === currentSelection)) {
+        requestFlightId.value = currentSelection;
+    }
 }
 
 // Load and display flights
 async function loadFlights() {
-const data = await fetchJSON(API.flights);
-const flights = Array.isArray(data) ? data : data.flights;
+    const data = await fetchJSON(API.flights);
+    const flights = Array.isArray(data) ? data : data.flights;
 
+    flightTableBody.innerHTML = "";
 
-flightTableBody.innerHTML = "";
+    if (!flights || flights.length === 0) {
+        flightTableBody.innerHTML =
+            '<tr><td colspan="6">No flights available.</td></tr>';
+        return;
+    }
 
-if (!flights || flights.length === 0) {
-    flightTableBody.innerHTML =
-        '<tr><td colspan="6">No flights available.</td></tr>';
-    return;
-}
+    flights.forEach((flight) => {
+        const row = document.createElement("tr");
 
-flights.forEach((flight) => {
-    const row = document.createElement("tr");
+        const actionHTML = flight.state === "Terminated"
+            ? "Completed"
+            : `<button class="terminate-button" data-flight-id="${flight.id}">Terminate</button>`;
 
-    const actionHTML = flight.state === "Terminated"
-        ? "Completed"
-        : `<button class="terminate-button" data-flight-id="${flight.id}">Terminate</button>`;
+        const allocatedRunways = flight.allocated?.runways ?? 0;
+        const allocatedGates = flight.allocated?.gates ?? 0;
+        const maxRunways = flight.maximum?.runways ?? 0;
+        const maxGates = flight.maximum?.gates ?? 0;
 
-    const allocatedRunways = flight.allocated?.runways ?? 0;
-    const allocatedGates = flight.allocated?.gates ?? 0;
-    const maxRunways = flight.maximum?.runways ?? 0;
-    const maxGates = flight.maximum?.gates ?? 0;
+        row.innerHTML = `
+            <td>${flight.id}</td>
+            <td>${flight.priority}</td>
+            <td><span class="status-badge">${flight.state}</span></td>
+            <td>${allocatedRunways} / ${allocatedGates}</td>
+            <td>${maxRunways} / ${maxGates}</td>
+            <td>${actionHTML}</td>
+        `;
 
-    row.innerHTML = `
-        <td>${flight.id}</td>
-        <td>${flight.priority}</td>
-        <td><span class="status-badge">${flight.state}</span></td>
-        <td>${allocatedRunways} / ${allocatedGates}</td>
-        <td>${maxRunways} / ${maxGates}</td>
-        <td>${actionHTML}</td>
-    `;
-
-    flightTableBody.appendChild(row);
-});
-
-
+        flightTableBody.appendChild(row);
+    });
 }
 
 // Refresh the complete dashboard
 async function refreshDashboard() {
-if (refreshButton) {
-refreshButton.disabled = true;
-}
-
-
-try {
-    await Promise.all([
-        loadFlights(),
-        loadResources(),
-        loadStatus(),
-        loadRequestFlightOptions() // NEW
-    ]);
-} catch (error) {
-    console.error("Dashboard refresh failed:", error);
-
-    if (formMessage) {
-        formMessage.textContent = error.message;
-    }
-} finally {
     if (refreshButton) {
-        refreshButton.disabled = false;
+        refreshButton.disabled = true;
     }
-}
 
+    try {
+        await Promise.all([
+            loadFlights(),
+            loadResources(),
+            loadStatus(),
+            loadStatistics(), // NEW: Refresh detailed statistics
+            loadRequestFlightOptions(),
+            loadActivityLog()
+        ]);
+    } catch (error) {
+        console.error("Dashboard refresh failed:", error);
 
+        if (formMessage) {
+            formMessage.textContent = error.message;
+        }
+    } finally {
+        if (refreshButton) {
+            refreshButton.disabled = false;
+        }
+    }
 }
 
 // Add a new flight
 if (flightForm) {
-flightForm.addEventListener("submit", async (event) => {
-event.preventDefault();
+    flightForm.addEventListener("submit", async (event) => {
+        event.preventDefault();
 
+        const flight = {
+            id: document.getElementById("flightId").value.trim(),
+            priority: Number(document.getElementById("priority").value),
+            max_runways: Number(document.getElementById("maxRunways").value),
+            max_gates: Number(document.getElementById("maxGates").value)
+        };
 
-    const flight = {
-        id: document.getElementById("flightId").value.trim(),
-        priority: Number(document.getElementById("priority").value),
-        max_runways: Number(document.getElementById("maxRunways").value),
-        max_gates: Number(document.getElementById("maxGates").value)
-    };
-
-    try {
-        const result = await fetchJSON(API.flights, {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify(flight)
-        });
-
-        formMessage.textContent =
-            result.message || "Flight added successfully.";
-
-        flightForm.reset();
-
-        await refreshDashboard();
-    } catch (error) {
-        formMessage.textContent = error.message;
-    }
-});
-
-
-}
-
-// Run the priority scheduler
-if (scheduleButton) {
-scheduleButton.addEventListener("click", async () => {
-scheduleButton.disabled = true;
-
-
-    try {
-        const result = await fetchJSON(API.schedule, {
-            method: "POST"
-        });
-
-        const sequence = Array.isArray(result.safe_sequence)
-            ? result.safe_sequence.join(" → ")
-            : "Unavailable";
-
-        schedulerMessage.textContent =
-            `${result.message || "Scheduling completed."} ` +
-            `Safe state: ${result.safe_state ? "YES" : "NO"}. ` +
-            `Safe sequence: ${sequence}`;
-
-        await refreshDashboard();
-    } catch (error) {
-        schedulerMessage.textContent = error.message;
-    } finally {
-        scheduleButton.disabled = false;
-    }
-});
-
-
-}
-
-// NEW: Submit a resource request from the dashboard
-if (resourceRequestForm) {
-resourceRequestForm.addEventListener("submit", async (event) => {
-event.preventDefault();
-
-
-    const flightId = requestFlightId.value;
-
-    const runways = Number(
-        document.getElementById("requestRunways").value
-    );
-
-    const gates = Number(
-        document.getElementById("requestGates").value
-    );
-
-    if (!flightId) {
-        resourceRequestMessage.textContent = "Please select a flight.";
-        return;
-    }
-
-    if (
-        !Number.isInteger(runways) ||
-        !Number.isInteger(gates) ||
-        runways < 0 ||
-        gates < 0 ||
-        (runways === 0 && gates === 0)
-    ) {
-        resourceRequestMessage.textContent =
-            "Enter valid resource quantities and request at least one resource.";
-        return;
-    }
-
-    resourceRequestForm.querySelector('button[type="submit"]').disabled = true;
-
-    try {
-        // Fetch directly so HTTP 202 and 409 responses can be displayed.
-        const response = await fetch(
-            `/api/flights/${encodeURIComponent(flightId)}/request`,
-            {
+        try {
+            const result = await fetchJSON(API.flights, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json"
                 },
-                body: JSON.stringify({
-                    runways: runways,
-                    gates: gates
-                })
-            }
+                body: JSON.stringify(flight)
+            });
+
+            formMessage.textContent =
+                result.message || "Flight added successfully.";
+
+            flightForm.reset();
+
+            await refreshDashboard();
+        } catch (error) {
+            formMessage.textContent = error.message;
+        }
+    });
+}
+
+// Run the priority scheduler
+if (scheduleButton) {
+    scheduleButton.addEventListener("click", async () => {
+        scheduleButton.disabled = true;
+
+        try {
+            const result = await fetchJSON(API.schedule, {
+                method: "POST"
+            });
+
+            const sequence = Array.isArray(result.safe_sequence)
+                ? result.safe_sequence.join(" → ")
+                : "Unavailable";
+
+            schedulerMessage.textContent =
+                `${result.message || "Scheduling completed."} ` +
+                `Safe state: ${result.safe_state ? "YES" : "NO"}. ` +
+                `Safe sequence: ${sequence}`;
+
+            await refreshDashboard();
+        } catch (error) {
+            schedulerMessage.textContent = error.message;
+        } finally {
+            scheduleButton.disabled = false;
+        }
+    });
+}
+
+// Submit a resource request from the dashboard
+if (resourceRequestForm) {
+    resourceRequestForm.addEventListener("submit", async (event) => {
+        event.preventDefault();
+
+        const flightId = requestFlightId.value;
+
+        const runways = Number(
+            document.getElementById("requestRunways").value
         );
 
-        const result = await response.json();
+        const gates = Number(
+            document.getElementById("requestGates").value
+        );
 
-        if (response.status === 202 && result.pending) {
-            resourceRequestMessage.textContent =
-                `⏳ ${result.message} Flight ${flightId} is waiting.`;
-        } else if (response.ok && result.granted) {
-            resourceRequestMessage.textContent =
-                `✅ ${result.message} Safe sequence: ` +
-                `${(result.safe_sequence || []).join(" → ")}`;
-        } else {
-            resourceRequestMessage.textContent =
-                `❌ ${result.error || result.message || "Request failed."}`;
+        if (!flightId) {
+            resourceRequestMessage.textContent = "Please select a flight.";
+            return;
         }
 
-        await refreshDashboard();
+        if (
+            !Number.isInteger(runways) ||
+            !Number.isInteger(gates) ||
+            runways < 0 ||
+            gates < 0 ||
+            (runways === 0 && gates === 0)
+        ) {
+            resourceRequestMessage.textContent =
+                "Enter valid resource quantities and request at least one resource.";
+            return;
+        }
 
-        // Refresh deadlock information after a request.
-        await checkDeadlock();
-    } catch (error) {
-        resourceRequestMessage.textContent =
-            `Error: ${error.message}`;
-    } finally {
-        resourceRequestForm.querySelector('button[type="submit"]').disabled = false;
-    }
-});
+        const submitButton =
+            resourceRequestForm.querySelector('button[type="submit"]');
 
+        submitButton.disabled = true;
 
+        try {
+            // Handle HTTP 202 pending requests and HTTP 409 errors.
+            const response = await fetch(
+                `/api/flights/${encodeURIComponent(flightId)}/request`,
+                {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({
+                        runways: runways,
+                        gates: gates
+                    })
+                }
+            );
+
+            const result = await response.json();
+
+            if (response.status === 202 && result.pending) {
+                resourceRequestMessage.textContent =
+                    `⏳ ${result.message} Flight ${flightId} is waiting.`;
+            } else if (response.ok && result.granted) {
+                resourceRequestMessage.textContent =
+                    `✅ ${result.message} Safe sequence: ` +
+                    `${(result.safe_sequence || []).join(" → ")}`;
+            } else {
+                resourceRequestMessage.textContent =
+                    `❌ ${result.error || result.message || "Request failed."}`;
+            }
+
+            await refreshDashboard();
+
+            // Refresh deadlock information after a request.
+            await checkDeadlock();
+        } catch (error) {
+            resourceRequestMessage.textContent =
+                `Error: ${error.message}`;
+        } finally {
+            submitButton.disabled = false;
+        }
+    });
 }
 
-// NEW: Check deadlock and display analysis results
+// Check deadlock and display analysis results
 async function checkDeadlock() {
-if (!deadlockResults) return;
+    if (!deadlockResults) return;
 
-
-deadlockResults.textContent = "Checking system state...";
-
-try {
-    const result = await fetchJSON(API.deadlockCheck);
-
-    // Build results safely using textContent.
-    deadlockResults.innerHTML = "";
-
-    const heading = document.createElement("h3");
-    heading.textContent = result.message;
-    deadlockResults.appendChild(heading);
-
-    const safeState = document.createElement("p");
-    safeState.textContent =
-        `Safe state: ${result.safe_state ? "YES" : "NO"}`;
-    deadlockResults.appendChild(safeState);
-
-    const deadlockStatus = document.createElement("p");
-    deadlockStatus.textContent =
-        `Actual deadlock: ${
-            result.actual_deadlock_detected ? "DETECTED" : "NOT DETECTED"
-        }`;
-    deadlockResults.appendChild(deadlockStatus);
-
-    const sequence = document.createElement("p");
-    sequence.textContent =
-        `Safe sequence: ${
-            result.safe_sequence?.length
-                ? result.safe_sequence.join(" → ")
-                : "None available"
-        }`;
-    deadlockResults.appendChild(sequence);
-
-    const deadlocked = document.createElement("p");
-    deadlocked.textContent =
-        `Deadlocked flights: ${
-            result.deadlocked_flights?.length
-                ? result.deadlocked_flights.join(", ")
-                : "None"
-        }`;
-    deadlockResults.appendChild(deadlocked);
-
-    const pendingHeading = document.createElement("h4");
-    pendingHeading.textContent = "Pending Resource Requests";
-    deadlockResults.appendChild(pendingHeading);
-
-    if (result.pending_requests?.length) {
-        const list = document.createElement("ul");
-
-        result.pending_requests.forEach(item => {
-            const entry = document.createElement("li");
-
-            entry.textContent =
-                `${item.id}: ${item.request.runways} runway(s), ` +
-                `${item.request.gates} gate(s)`;
-
-            list.appendChild(entry);
-        });
-
-        deadlockResults.appendChild(list);
-    } else {
-        const noPending = document.createElement("p");
-        noPending.textContent = "No pending requests.";
-        deadlockResults.appendChild(noPending);
-    }
-
-    const detectionSequence = document.createElement("p");
-    detectionSequence.textContent =
-        `Detection completion sequence: ${
-            result.detection_completion_sequence?.length
-                ? result.detection_completion_sequence.join(" → ")
-                : "None"
-        }`;
-    deadlockResults.appendChild(detectionSequence);
-
-} catch (error) {
-    deadlockResults.textContent =
-        `Could not check deadlock: ${error.message}`;
-}
-
-
-}
-
-// NEW: Deadlock check button
-if (deadlockCheckButton) {
-deadlockCheckButton.addEventListener("click", async () => {
-deadlockCheckButton.disabled = true;
-
+    deadlockResults.textContent = "Checking system state...";
 
     try {
-        await checkDeadlock();
-    } finally {
-        deadlockCheckButton.disabled = false;
+        const result = await fetchJSON(API.deadlockCheck);
+
+        // Build results safely using textContent.
+        deadlockResults.innerHTML = "";
+
+        const heading = document.createElement("h3");
+        heading.textContent = result.message;
+        deadlockResults.appendChild(heading);
+
+        const safeState = document.createElement("p");
+        safeState.textContent =
+            `Safe state: ${result.safe_state ? "YES" : "NO"}`;
+        deadlockResults.appendChild(safeState);
+
+        const deadlockStatus = document.createElement("p");
+        deadlockStatus.textContent =
+            `Actual deadlock: ${
+                result.actual_deadlock_detected ? "DETECTED" : "NOT DETECTED"
+            }`;
+        deadlockResults.appendChild(deadlockStatus);
+
+        const sequence = document.createElement("p");
+        sequence.textContent =
+            `Safe sequence: ${
+                result.safe_sequence?.length
+                    ? result.safe_sequence.join(" → ")
+                    : "None available"
+            }`;
+        deadlockResults.appendChild(sequence);
+
+        const deadlocked = document.createElement("p");
+        deadlocked.textContent =
+            `Deadlocked flights: ${
+                result.deadlocked_flights?.length
+                    ? result.deadlocked_flights.join(", ")
+                    : "None"
+            }`;
+        deadlockResults.appendChild(deadlocked);
+
+        const pendingHeading = document.createElement("h4");
+        pendingHeading.textContent = "Pending Resource Requests";
+        deadlockResults.appendChild(pendingHeading);
+
+        if (result.pending_requests?.length) {
+            const list = document.createElement("ul");
+
+            result.pending_requests.forEach(item => {
+                const entry = document.createElement("li");
+
+                entry.textContent =
+                    `${item.id}: ${item.request.runways} runway(s), ` +
+                    `${item.request.gates} gate(s)`;
+
+                list.appendChild(entry);
+            });
+
+            deadlockResults.appendChild(list);
+        } else {
+            const noPending = document.createElement("p");
+            noPending.textContent = "No pending requests.";
+            deadlockResults.appendChild(noPending);
+        }
+
+        const detectionSequence = document.createElement("p");
+        detectionSequence.textContent =
+            `Detection completion sequence: ${
+                result.detection_completion_sequence?.length
+                    ? result.detection_completion_sequence.join(" → ")
+                    : "None"
+            }`;
+        deadlockResults.appendChild(detectionSequence);
+
+    } catch (error) {
+        deadlockResults.textContent =
+            `Could not check deadlock: ${error.message}`;
     }
-});
+}
 
+// Deadlock check button
+if (deadlockCheckButton) {
+    deadlockCheckButton.addEventListener("click", async () => {
+        deadlockCheckButton.disabled = true;
 
+        try {
+            await checkDeadlock();
+        } finally {
+            deadlockCheckButton.disabled = false;
+        }
+    });
 }
 
 // Terminate a flight and release its resources
 if (flightTableBody) {
-flightTableBody.addEventListener("click", async (event) => {
-const button = event.target.closest("[data-flight-id]");
+    flightTableBody.addEventListener("click", async (event) => {
+        const button = event.target.closest("[data-flight-id]");
 
+        if (!button) {
+            return;
+        }
 
-    if (!button) {
-        return;
-    }
+        const flightId = button.dataset.flightId;
 
-    const flightId = button.dataset.flightId;
+        if (!confirm(`Terminate flight ${flightId}?`)) {
+            return;
+        }
 
-    if (!confirm(`Terminate flight ${flightId}?`)) {
-        return;
-    }
+        button.disabled = true;
 
-    button.disabled = true;
+        try {
+            const result = await fetchJSON(
+                `/api/flights/${encodeURIComponent(flightId)}/terminate`,
+                { method: "POST" }
+            );
 
-    try {
-        const result = await fetchJSON(
-            `/api/flights/${encodeURIComponent(flightId)}/terminate`,
-            { method: "POST" }
-        );
+            formMessage.textContent =
+                result.message || "Flight terminated successfully.";
 
-        formMessage.textContent =
-            result.message || "Flight terminated successfully.";
-
-        await refreshDashboard();
-        await checkDeadlock(); // NEW
-    } catch (error) {
-        formMessage.textContent = error.message;
-        button.disabled = false;
-    }
-});
-
-
+            await refreshDashboard();
+            await checkDeadlock();
+        } catch (error) {
+            formMessage.textContent = error.message;
+            button.disabled = false;
+        }
+    });
 }
 
 // Refresh button
 if (refreshButton) {
-refreshButton.addEventListener("click", async () => {
-await refreshDashboard();
-await checkDeadlock(); // NEW
-});
+    refreshButton.addEventListener("click", async () => {
+        await refreshDashboard();
+        await checkDeadlock();
+    });
 }
 
 // Load dashboard when the page opens
